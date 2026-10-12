@@ -58,7 +58,9 @@ export default function initServer(port: number = 3000, wsPort: number = 3001) {
     wsClient.close();
   });
 
-  const petContext = initPetContext();
+  const petContext = initPetContext(function(message: string) {
+    WSContext.broadcast("notification", message);
+  });
   router.use("/api", petContext.router);
 
   app.use(router);

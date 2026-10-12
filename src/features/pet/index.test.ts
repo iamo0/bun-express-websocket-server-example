@@ -1,11 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock as mockFunction } from "bun:test";
 import { mock } from "node:test"
 import express from "express";
-import initPetContext from ".";
+import initPetContext, { PetContextMessage } from ".";
 import { ErrorMessage, PET_HUNGER_LIMIT, PET_HUNGER_RATE_PER_TICK, PET_HUNGER_THRESHOLD, TICK_DURATION } from "./pet";
 
+let broadcastFn:(message: string) => void = () => {};
+
 function initServer(port: number = 7530): [string, () => void] {
-  const { router, dispose } = initPetContext();
+  broadcastFn = mockFunction((_message: string) => {});
+  const { router, dispose } = initPetContext(broadcastFn);
 
   const app = express();
   app.use(router);
@@ -137,6 +140,37 @@ describe("Pet routing", function () {
       expect(overfeedResponseData).toEqual({
         message: ErrorMessage.JUST_FED,
       });
+    });
+
+    it("/feed request sends message via broadcast function that the pet has been fed", async function() {
+      mock.timers.tick((PET_HUNGER_LIMIT / 2) / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
+      const feedResponse = await fetch(`${baseURL}/feed`);
+      expect(feedResponse.status).toBe(200);
+      expect(broadcastFn).toHaveBeenCalledWith(PetContextMessage.FED);
+    });
+
+    it("/feed request sends message via broadcast function notification about unsuccessful feeding (overfed)", async function() {
+      mock.timers.tick((PET_HUNGER_LIMIT / 2) / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
+      const feedResponse = await fetch(`${baseURL}/feed`);
+      expect(feedResponse.status).toBe(200);
+
+      mock.timers.tick(2);
+      const overfeedResponse = await fetch(`${baseURL}/feed`);
+      expect(overfeedResponse.status).toBe(429);
+      expect(broadcastFn).toHaveBeenCalledWith(PetContextMessage.JUST_FED);
+    });
+
+    it("/feed request sends message via broadcast function notification about unsuccessful feeding (not hungry)", async function() {
+      const feedResponse = await fetch(`${baseURL}/feed`);
+      expect(feedResponse.status).toBe(409);
+      expect(broadcastFn).toHaveBeenCalledWith(PetContextMessage.NOT_HUNGRY);
+    });
+
+    it("/feed request sends message via broadcast function notification about unsuccessful feeding (pet is in stasis)", async function() {
+      mock.timers.tick(PET_HUNGER_LIMIT / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
+      const feedResponse = await fetch(`${baseURL}/feed`);
+      expect(feedResponse.status).toBe(409);
+      expect(broadcastFn).toHaveBeenCalledWith(PetContextMessage.STASIS);
     });
   });
 });
