@@ -3,12 +3,23 @@ const PET_HUNGER_THRESHOLD = 75;
 const PET_HUNGER_RATE_PER_TICK = 1;
 const TICK_DURATION = 100;
 const PET_FEEDING_COOLDOWN = 1000;
+const POLL_INTERVAL = 500;
 
 const STATE_LABELS = {
   healthy: "здоров",
   hungry: "голоден",
   stasis: "стазис",
 };
+
+const MESSAGE_TEXT = {
+  "Someone fed the pet": "кто-то покормил питомца",
+  "Someone tried to feed the pet when it wasn't hungry": "кто-то пытался покормить, но питомец не голоден",
+  "Someone tried to feed the pet right after it was fed by someone else": "кто-то пытался покормить слишком рано после прошлого кормления",
+  "Someone tried to feed pet while it's in stasis": "кто-то пытался покормить питомца в стазисе",
+};
+
+const JUST_FED_TEXT = "Someone tried to feed the pet right after it was fed by someone else";
+const FED_TEXT = "Someone fed the pet";
 
 const els = {
   conn: document.getElementById("conn"),
@@ -67,9 +78,6 @@ function stateToMinHunger(state) {
 }
 
 function applyServerState(state) {
-  // При поллинге каждые 500мс сервер — источник правды.
-  // Ставим hunger к нижней границе состояния, локальный тикер
-  // достроит остальное.
   hunger = stateToMinHunger(state);
   hungerAnchorAt = Date.now();
   tickIndicator();
@@ -95,7 +103,7 @@ function tickIndicator() {
   renderPet(h, state, 0);
 }
 
-setInterval(tickIndicator, 250);
+setInterval(tickIndicator, 100);
 
 function startCooldown(ms) {
   cooldownUntil = Date.now() + ms;
@@ -105,15 +113,17 @@ function startCooldown(ms) {
     const left = cooldownUntil - Date.now();
     if (left <= 0) {
       clearInterval(cooldownTimer);
+      cooldownTimer = null;
+      cooldownUntil = 0;
       els.feed.disabled = false;
       els.feed.textContent = "Покормить";
       return;
     }
     els.feed.textContent = `Подожди ${Math.ceil(left / 1000)} с`;
-  }, 250);
+  }, 100);
 }
 
-async function loadInitialState() {
+async function loadState() {
   try {
     const res = await fetch("/api/state");
     if (!res.ok) throw new Error(`state ${res.status}`);
@@ -125,28 +135,35 @@ async function loadInitialState() {
 }
 
 async function feed() {
+  if (Date.now() < cooldownUntil) {
+    return;
+  }
+
   els.feed.disabled = true;
   try {
     const res = await fetch("/api/feed");
 
     if (res.ok) {
       const data = await res.json().catch(() => ({}));
-      log("покормил(а)");
+      // наше успешное кормление — запускаем кулдаун
+      startCooldown(PET_FEEDING_COOLDOWN);
       if (data.state) {
         applyServerState(data.state);
-      } else {
-        await loadInitialState();
       }
       return;
     }
 
-    const data = await res.json().catch(() => ({}));
-
-    if (res.status === 409 || res.status === 429) {
-      log(`отказано: ${data.message ?? res.status}`);
-      if (res.status === 429) startCooldown(PET_FEEDING_COOLDOWN);
+    if (res.status === 429) {
+      // сервер сказал, что кулдаун ещё активен (мы или кто-то другой кормил)
+      startCooldown(PET_FEEDING_COOLDOWN);
       return;
     }
+
+    if (res.status === 409) {
+      // не голоден или стазис — кулдаун не наш случай
+      return;
+    }
+
     log(`ошибка: ${res.status}`);
   } catch (err) {
     log(`ошибка сети: ${err.message}`);
@@ -167,11 +184,37 @@ async function fetchWsUrl() {
     if (typeof data.ws_url !== "string" || !data.ws_url) {
       throw new Error("api-info did not return ws_url");
     }
-    wsUrl = data.ws_url;
+    wsUrl = data.ws_url.replace(/^http/, "ws");
     return wsUrl;
   } catch (err) {
     log(`не удалось получить адрес WS: ${err.message}`);
     return null;
+  }
+}
+
+function handleWSMessage(raw) {
+  let msg;
+  try { msg = JSON.parse(raw); }
+  catch { log(`нечитаемое сообщение: ${raw}`); return; }
+
+  if (msg.type !== "notification") return;
+
+  const humanText = MESSAGE_TEXT[msg.text] ?? msg.text;
+  log(humanText);
+
+  if (msg.text === FED_TEXT) {
+    // кто-то (возможно не мы) покормил — перезапускаем кулдаун
+    // от текущего момента и синхронизируем состояние
+    loadState();
+    startCooldown(PET_FEEDING_COOLDOWN);
+    return;
+  }
+
+  if (msg.text === JUST_FED_TEXT) {
+    // кто-то попытался покормить слишком рано — сервер подтверждает,
+    // что кулдаун активен, синхронизируем кнопку
+    startCooldown(PET_FEEDING_COOLDOWN);
+    return;
   }
 }
 
@@ -191,13 +234,7 @@ function connectWS() {
   });
 
   ws.addEventListener("message", (event) => {
-    let msg;
-    try { msg = JSON.parse(event.data); }
-    catch { log(`нечитаемое сообщение: ${event.data}`); return; }
-
-    if (msg.type === "notification") {
-      log(msg.text ?? "уведомление");
-    }
+    handleWSMessage(event.data);
   });
 
   ws.addEventListener("close", () => {
@@ -227,9 +264,9 @@ function scheduleReconnect() {
   }, reconnectDelay);
 }
 
-setInterval(loadInitialState, 500);
+setInterval(loadState, POLL_INTERVAL);
 
-loadInitialState();
+loadState();
 
 (async () => {
   await fetchWsUrl();
