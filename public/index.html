@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Тамагочи</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app__header">
+      <h1 class="app__title">Тамагочи</h1>
+      <span class="app__conn" id="conn" data-state="connecting">соединение…</span>
+    </header>
+
+    <section class="pet" aria-live="polite">
+      <div class="pet__face" id="face">🐣</div>
+      <div class="pet__state" id="state-label">…</div>
+      <div class="pet__age" id="age">возраст: 0 дней</div>
+    </section>
+
+    <section class="status" id="status" data-state="healthy">
+      <div class="status__dot"></div>
+      <div class="status__label" id="status-label">здоров</div>
+    </section>
+
+    <section class="actions">
+      <button id="feed" class="btn btn--primary">Покормить</button>
+    </section>
+
+    <section class="log">
+      <h2 class="log__title">Что происходит</h2>
+      <ul class="log__list" id="log"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,12 +1,12 @@
 export type PetState = "healthy" | "hungry" | "stasis";
 
-export const TICK_DURATION = 1000;
+export const TICK_DURATION = 100;
 
 export const PET_HUNGER_RATE_PER_TICK = 1;
 export const PET_HUNGER_THRESHOLD = 75;
-export const PET_HUNGER_LIMIT = 10000;
+export const PET_HUNGER_LIMIT = 1000;
 
-export const PET_FEEDING_COOLDOWN = 10000;
+export const PET_FEEDING_COOLDOWN = 1000;
 
 export const ErrorMessage = {
   STASIS: "Can't feed a pet as it is in stasis",

@@ -113,16 +113,21 @@ describe("Pet routing", function () {
       });
     });
 
-    it("/feed request at appropriate time returns 204", async function() {
+    it("/feed request at appropriate time returns 200 and returns correct state", async function() {
       mock.timers.tick((PET_HUNGER_LIMIT / 10) / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
       const feedResponse = await fetch(`${baseURL}/feed`);
-      expect(feedResponse.status).toBe(204);
+      expect(feedResponse.status).toBe(200);
+
+      const data = await feedResponse.json();
+      expect(data).toEqual({
+        state: "healthy",
+      });
     });
 
     it("/feed request for a just fed pet returns 429", async function() {
       mock.timers.tick((PET_HUNGER_LIMIT / 2) / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
       const feedResponse = await fetch(`${baseURL}/feed`);
-      expect(feedResponse.status).toBe(204);
+      expect(feedResponse.status).toBe(200);
 
       mock.timers.tick(1);
       const overfeedResponse = await fetch(`${baseURL}/feed`);

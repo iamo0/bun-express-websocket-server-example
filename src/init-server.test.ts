@@ -2,12 +2,12 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test"
 import type { Server } from "http";
 import initServer from "./init-server";
 
-let server:Server | null = null;
+let server: Server | null = null;
 let wsServer: ReturnType<typeof Bun.serve> | null = null;
 let baseURL = ``;
-let closeFn = () => {};
+let closeFn = () => { };
 
-beforeAll(function() {
+beforeAll(function () {
   const serverData = initServer(7357, 7358);
   server = serverData.server;
   closeFn = serverData.close;
@@ -23,14 +23,29 @@ beforeAll(function() {
     : `http://localhost:${address.port}`;
 });
 
-afterAll(async function() {
+afterAll(async function () {
   await closeFn();
 });
 
-describe("Global behaviour", function() {
-  describe("Welcome handle", function() {
-    it("/ returns a JSON containing additional data like url to connect to WS server", async function() {
+describe("Global behaviour", function () {
+  describe("Frontend", function () {
+    it("/ returns HTML", async function() {
       const response = await fetch(`${baseURL}/`);
+      expect(response.status).toBe(200);
+
+      const contentType = response.headers.get("content-type") ?? "";
+      expect(contentType).toContain("text/html");
+    });
+
+    it("unknown path returns 404", async function () {
+      const response = await fetch(`${baseURL}/nope`);
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("Welcome handle", function () {
+    it("/api-info returns a JSON containing additional data like url to connect to WS server", async function () {
+      const response = await fetch(`${baseURL}/api-info`);
       expect(response.status).toBe(200);
 
       const data = await response.json();
@@ -40,8 +55,8 @@ describe("Global behaviour", function() {
     });
   });
 
-  describe("Server healthcheck", function() {
-    it("/health returns 200 and shows that WS is running", async function() {
+  describe("Server healthcheck", function () {
+    it("/health returns 200 and shows that WS is running", async function () {
       const response = await fetch(`${baseURL}/health`);
       expect(response.status).toBe(200);
 
@@ -54,7 +69,7 @@ describe("Global behaviour", function() {
       });
     });
 
-    it("If WS is down for some reason /health will show it", async function() {
+    it("If WS is down for some reason /health will show it", async function () {
       await wsServer!.stop();
       const response = await fetch(`${baseURL}/health`);
       expect(response.status).toBe(200);

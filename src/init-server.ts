@@ -1,6 +1,7 @@
 import express, { Router, type Response } from "express";
 import initPetContext from "./features/pet";
 import getWSContext from "./ws";
+import getFrontendContext from "./features/frontend";
 
 export type HealthcheckStatus = "up" | "degraded" | "down";
 
@@ -18,10 +19,14 @@ export interface HealthcheckReport {
 export default function initServer(port: number = 3000, wsPort: number = 3001) {
   const app = express();
   const router = Router();
+
+  const { middleware: frontendMiddleware } = getFrontendContext();
+  app.use(frontendMiddleware);
+
   const WSContext = getWSContext(wsPort);
   const { shutdown } = WSContext;
 
-  router.get("/", function(_req, res: Response<GeneralInfoResponse>) {
+  router.get("/api-info", function(_req, res: Response<GeneralInfoResponse>) {
     res.status(200).json({
       "ws_url": WSContext.host,
     });
