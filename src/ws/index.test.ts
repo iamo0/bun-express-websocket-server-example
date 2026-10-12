@@ -109,7 +109,7 @@ describe("WS server context", function () {
       // on server hasn't been yet applied
       // calling `broadcast` on client will
       // result in nothing.
-      Bun.sleep(0);
+      await Bun.sleep(0);
 
       const messageSize = broadcast("notification", "Hello");
       expect(messageSize).toBeGreaterThan(0);
