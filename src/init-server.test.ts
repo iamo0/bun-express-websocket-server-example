@@ -24,7 +24,7 @@ beforeAll(function() {
 });
 
 afterAll(async function() {
-  closeFn();
+  await closeFn();
 });
 
 describe("Global behaviour", function() {

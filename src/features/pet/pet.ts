@@ -12,7 +12,7 @@ export const ErrorMessage = {
   STASIS: "Can't feed a pet as it is in stasis",
   NOT_HUNGRY: "Can't feed a pet as it is not hungry",
   JUST_FED: `Pet can't be fed more often than once in ${PET_FEEDING_COOLDOWN / 1000}s`,
-}
+} as const;
 
 export class StasisError extends Error { }
 export class NotHungryError extends Error { }
@@ -22,12 +22,13 @@ export default class Pet {
   constructor() {
     const now = Date.now();
     this.#createdAt = now;
-    setInterval(() => this.#tick(), TICK_DURATION);
+    this.#timer = setInterval(() => this.#tick(), TICK_DURATION);
   }
 
   #createdAt: number = -1
   #hunger: number = 0
   #lastFed: number = -1
+  #timer:ReturnType<typeof setInterval>
 
   get age() {
     const ms = Date.now() - this.#createdAt;
@@ -70,5 +71,9 @@ export default class Pet {
 
     this.#lastFed = Date.now();
     this.#hunger -= PET_HUNGER_LIMIT / 10;
+  }
+
+  dispose() {
+    clearInterval(this.#timer);
   }
 }

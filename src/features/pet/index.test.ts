@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mock } from "node:test"
 import express from "express";
 import initPetContext from ".";
 import { ErrorMessage, PET_HUNGER_LIMIT, PET_HUNGER_RATE_PER_TICK, PET_HUNGER_THRESHOLD, TICK_DURATION } from "./pet";
 
 function initServer(port: number = 7530): [string, () => void] {
-  const { router } = initPetContext();
+  const { router, dispose } = initPetContext();
 
   const app = express();
   app.use(router);
@@ -29,9 +29,15 @@ function initServer(port: number = 7530): [string, () => void] {
 
   return [
     baseURL,
-    function () {
-      server.close();
-    }
+    async function () {
+      dispose();
+      await new Promise(function(resolve) {
+        server.closeAllConnections();
+        server.close(function() {
+          resolve(true);
+        });
+      });
+    },
   ];
 }
 
@@ -43,8 +49,8 @@ beforeEach(function() {
   [baseURL, shutdown] = initServer(7351);
 });
 
-afterEach(function() {
-  shutdown();
+afterEach(async function() {
+  await shutdown();
   mock.timers.reset();
 });
 

@@ -12,7 +12,7 @@ afterEach(function() {
 
 describe("Pet is aging", function () {
   describe("Age is displayed in full days", function () {
-    it("Newborm pet is 0 days old", function () {
+    it("Newborn pet is 0 days old", function () {
       const pet = new Pet();
       expect(pet.age).toBe(0);
     });
@@ -39,13 +39,13 @@ describe("Pet is getting hungry", function () {
     expect(pet._hunger).toBe(0);
   });
 
-  it("Every second pet is getting hungrier at a cetrain rate (specified in a constant)", function () {
+  it("Every second pet is getting hungrier at a certain rate (specified in a constant)", function () {
     const pet = new Pet();
     mock.timers.tick(TICK_DURATION);
     expect(pet._hunger).toBe(PET_HUNGER_RATE_PER_TICK);
   });
 
-  it("Pet can't get pass cetrain points of hunger (specified in a constant)", function () {
+  it("Pet can't get pass certain points of hunger (specified in a constant)", function () {
     const pet = new Pet();
 
     mock.timers.tick(PET_HUNGER_LIMIT / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
@@ -68,7 +68,7 @@ describe("Pet state getter", function () {
     expect(pet.state).toBe("hungry");
   });
 
-  it("If hunger points maxxed, pet goes to stasis", function () {
+  it("If hunger points maxed, pet goes to stasis", function () {
     const pet = new Pet();
     mock.timers.tick(PET_HUNGER_LIMIT / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
     expect(pet.state).toBe("stasis");
@@ -104,7 +104,7 @@ describe("Pet feeding process", function() {
     expect(() => pet.feed()).toThrow(JustFedError);
   });
 
-  it("Pet feeding decreases it's hunger rate by 1/10 of total hunger limit", function() {
+  it("Pet feeding decreases its hunger rate by 1/10 of total hunger limit", function() {
     const pet = new Pet();
     const start = PET_HUNGER_LIMIT / 10 + 50;
     mock.timers.tick(start / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
@@ -118,5 +118,18 @@ describe("Pet feeding process", function() {
     pet.feed();
     mock.timers.tick(1);
     expect(() => pet.feed()).toThrow(JustFedError);
+  });
+});
+
+describe("Pet disposal", function() {
+  it("Pet.dispose() stops the timer", function() {
+    const pet = new Pet();
+    mock.timers.tick(PET_HUNGER_LIMIT / 10 / PET_HUNGER_RATE_PER_TICK * TICK_DURATION);
+    expect(pet._hunger).toBe(PET_HUNGER_LIMIT / 10);
+
+    pet.dispose();
+
+    mock.timers.tick(1000);
+    expect(pet._hunger).toBe(PET_HUNGER_LIMIT / 10);
   });
 });

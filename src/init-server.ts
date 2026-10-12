@@ -59,13 +59,14 @@ export default function initServer(port: number = 3000, wsPort: number = 3001) {
   app.use(router);
 
   async function close() {
-    shutdown();
-
-    if (server === null) {
-      return;
-    }
-
-    await server.close();
+    petContext.dispose();
+    await shutdown();
+    await new Promise(function(resolve) {
+      server.closeAllConnections();
+      server.close(function() {
+        resolve(true);
+      });
+    });
   }
 
   const server = app.listen(port, async function (err) {
@@ -73,11 +74,6 @@ export default function initServer(port: number = 3000, wsPort: number = 3001) {
       await close();
       process.exit(1);
     }
-  });
-
-  process.on("SIGTERM", async function () {
-    await close();
-    process.exit(0);
   });
 
   return {

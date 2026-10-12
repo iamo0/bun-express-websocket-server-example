@@ -33,6 +33,9 @@ export default function initPetContext() {
   })
 
   return {
-    router
+    router,
+    dispose() {
+      pet.dispose();
+    }
   };
 }

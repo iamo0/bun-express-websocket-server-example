@@ -1,3 +1,8 @@
 import initServer from "./src/init-server";
 
-initServer();
+const { close } = initServer();
+
+process.on("SIGTERM", async function () {
+  await close();
+  process.exit(0);
+});
