@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import getWSContext from ".";
 
 describe("WS server context", function () {
